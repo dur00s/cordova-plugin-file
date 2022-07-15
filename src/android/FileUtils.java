@@ -36,7 +36,6 @@ import androidx.webkit.WebViewAssetLoader;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
-import org.apache.cordova.CordovaPluginPathHandler;
 import org.apache.cordova.CordovaWebView;
 import org.apache.cordova.LOG;
 import org.apache.cordova.PermissionHelper;
@@ -286,7 +285,7 @@ public class FileUtils extends CordovaPlugin {
         if (action.equals("testSaveLocationExists")) {
             threadhelper(new FileOp() {
                 public void run(JSONArray args) {
-                    
+
                     boolean b = DirectoryManager.testSaveLocationExists();
                     callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, b));
                 }
@@ -1262,80 +1261,5 @@ public class FileUtils extends CordovaPlugin {
     private String getMimeType(Uri uri) {
         String fileExtensionFromUrl = MimeTypeMap.getFileExtensionFromUrl(uri.toString()).toLowerCase();
         return  MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileExtensionFromUrl);
-    }
-
-    public CordovaPluginPathHandler getPathHandler() {
-        WebViewAssetLoader.PathHandler pathHandler = path -> {
-            String targetFileSystem = null;
-
-            if (path.startsWith(LocalFilesystemURL.fsNameToCdvKeyword("persistent"))) {
-                targetFileSystem = "persistent";
-            } else if (path.startsWith(LocalFilesystemURL.fsNameToCdvKeyword("temporary"))) {
-                targetFileSystem = "temporary";
-            } else if (path.startsWith(LocalFilesystemURL.fsNameToCdvKeyword("files"))) {
-                targetFileSystem = "files";
-            } else if (path.startsWith(LocalFilesystemURL.fsNameToCdvKeyword("documents"))) {
-                targetFileSystem = "documents";
-            } else if (path.startsWith(LocalFilesystemURL.fsNameToCdvKeyword("cache"))) {
-                targetFileSystem = "cache";
-            } else if (path.startsWith(LocalFilesystemURL.fsNameToCdvKeyword("root"))) {
-                targetFileSystem = "root";
-            } else if (path.startsWith(LocalFilesystemURL.fsNameToCdvKeyword("files-external"))) {
-                targetFileSystem = "files-external";
-            } else if (path.startsWith(LocalFilesystemURL.fsNameToCdvKeyword("sdcard"))) {
-                targetFileSystem = "sdcard";
-            } else if (path.startsWith(LocalFilesystemURL.fsNameToCdvKeyword("cache-external"))) {
-                targetFileSystem = "cache-external";
-            } else if (path.startsWith(LocalFilesystemURL.fsNameToCdvKeyword("assets"))) {
-                targetFileSystem = "assets";
-            }
-
-            boolean isAssetsFS = targetFileSystem == "assets";
-
-            if (targetFileSystem != null) {
-                // Loop the registered file systems to find the target.
-                for (Filesystem fileSystem : filesystems) {
-                    /*
-                     * When target is discovered:
-                     * 1. Transform the url path to the native path
-                     * 2. Load the file contents
-                     * 3. Get the file mime type
-                     * 4. Return the file & mime information back we Web Resources
-                     */
-                    if (fileSystem.name.equals(targetFileSystem)) {
-                        // E.g. replace __cdvfile_persistent__ with native path "/data/user/0/com.example.file/files/files/"
-                        String fileSystemNativeUri = fileSystem.rootUri.toString().replace("file://", "");
-                        String fileTarget = path.replace(LocalFilesystemURL.fsNameToCdvKeyword(targetFileSystem) + "/", fileSystemNativeUri);
-                        File file = null;
-
-                        if (isAssetsFS) {
-                            fileTarget = fileTarget.replace("/android_asset/", "");
-                        } else {
-                            file = new File(fileTarget);
-                        }
-
-                        try {
-                            InputStream fileIS = !isAssetsFS ?
-                                new FileInputStream(file) :
-                                webView.getContext().getAssets().open(fileTarget);
-
-                            String filePath = !isAssetsFS ? file.toString() : fileTarget;
-                            Uri fileUri = Uri.parse(filePath);
-                            String fileMimeType = getMimeType(fileUri);
-
-                            return new WebResourceResponse(fileMimeType, null, fileIS);
-                        } catch (FileNotFoundException e) {
-                            Log.e(LOG_TAG, e.getMessage());
-                        } catch (IOException e) {
-                            Log.e(LOG_TAG, e.getMessage());
-                        }
-                    }
-                }
-            }
-
-            return null;
-        };
-
-        return new CordovaPluginPathHandler(pathHandler);
     }
 }
